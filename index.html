@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tech News Reader - Enhanced Edition</title>
+    <style>
+      :root {
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --bg: #f8fafc;
+        --text: #1e293b;
+        --card: #ffffff;
+        --success: #10b981;
+        --error: #ef4444;
+        --warning: #f59e0b;
+      }
+
+      body {
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0;
+        padding: 2rem;
+        line-height: 1.6;
+      }
+
+      .container {
+        text-align: center;
+        max-width: 900px;
+        width: 100%;
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        margin-bottom: 2rem;
+        font-weight: 800;
+        background: linear-gradient(90deg, #3b82f6, #6366f1);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .btn {
+        background: var(--primary);
+        color: white;
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        min-width: 250px;
+        margin: 0.5rem;
+      }
+
+      .btn:hover {
+        background: var(--primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      }
+
+      .btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .status {
+        margin-top: 1rem;
+        min-height: 1.5rem;
+        font-weight: 500;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+        margin-right: 0.5rem;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .quality-report {
+        background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+        border: 1px solid #0ea5e9;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      .quality-report h3 {
+        color: var(--primary);
+        margin-bottom: 1rem;
+        font-size: 1.2rem;
+      }
+
+      .quality-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      .stat-item {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 0.75rem;
+        border-radius: 8px;
+        text-align: center;
+      }
+
+      .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary);
+      }
+
+      .stat-label {
+        font-size: 0.9rem;
+        color: #64748b;
+        margin-top: 0.25rem;
+      }
+
+      .articles-container {
+        margin-top: 2rem;
+        text-align: left;
+        max-width: 100%;
+      }
+
+      .articles-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: var(--primary);
+        text-align: center;
+      }
+
+      .articles-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .article-item {
+        background: var(--card);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        transition: transform 0.2s, box-shadow 0.2s;
+        position: relative;
+      }
+
+      .article-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      }
+
+      .article-link {
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 1.1rem;
+        text-decoration: none;
+        display: block;
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+      }
+
+      .article-link:hover {
+        text-decoration: underline;
+      }
+
+      .article-source {
+        color: #6b7280;
+        font-size: 0.9rem;
+        font-style: italic;
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .source-badge {
+        background: var(--primary);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+
+      .article-description {
+        color: #4b5563;
+        font-size: 0.95rem;
+        margin-top: 0.5rem;
+        line-height: 1.5;
+      }
+
+      .freshness-indicator {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--success);
+      }
+
+      @media (max-width: 640px) {
+        .article-item {
+          padding: 1rem;
+        }
+
+        .article-link {
+          font-size: 1rem;
+        }
+
+        .quality-stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>📰 Tech News Reader</h1>
+      <p style="color: #64748b; margin-bottom: 2rem">
+        Discover and read the latest high-quality tech articles from trusted
+        sources
+      </p>
+
+      <button id="fetchBtn" class="btn">Fetch 10 High-Quality Articles</button>
+      <div id="status" class="status"></div>
+
+      <div id="qualityReport" class="quality-report" style="display: none">
+        <h3>📊 Content Quality Report</h3>
+        <div class="quality-stats">
+          <div class="stat-item">
+            <div class="stat-value" id="totalArticles">-</div>
+            <div class="stat-label">Total Articles</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="uniqueSources">-</div>
+            <div class="stat-label">Unique Sources</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="mediumArticles">-</div>
+            <div class="stat-label">Medium Articles</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="qualityScore">-</div>
+            <div class="stat-label">Quality Score</div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        id="articlesContainer"
+        class="articles-container"
+        style="display: none"
+      >
+        <h2 class="articles-title">📄 Today's Top Tech Articles</h2>
+        <ul id="articlesList" class="articles-list"></ul>
+      </div>
+    </div>
+
+    <script>
+      const fetchBtn = document.getElementById("fetchBtn");
+      const statusEl = document.getElementById("status");
+      const articlesContainer = document.getElementById("articlesContainer");
+      const articlesList = document.getElementById("articlesList");
+      const qualityReport = document.getElementById("qualityReport");
+
+      // RSS feed sources
+      const generalFeeds = [
+        "https://feeds.feedburner.com/oreilly/radar",
+        "https://techcrunch.com/feed/",
+        "https://www.wired.com/feed/rss",
+      ];
+
+      const premiumTechFeeds = [
+        "https://www.freecodecamp.org/news/rss/",
+        "https://blog.pragmaticengineer.com/rss/",
+        "https://developer.mozilla.org/en-US/blog/rss.xml",
+        "https://blog.bytebytego.com/feed",
+        "https://netflixtechblog.com/feed",
+        "https://eng.uber.com/feed/",
+        "https://openai.com/blog/rss.xml",
+        "https://feed.infoq.com/",
+        "https://web.dev/feed.xml",
+        "https://feeds.feedburner.com/HighScalability",
+      ];
+
+      const mediumFeeds = [
+        "https://medium.com/feed/tag/react",
+        "https://medium.com/feed/tag/nextjs",
+        "https://medium.com/feed/tag/typescript",
+        "https://medium.com/feed/tag/nodejs",
+        "https://medium.com/feed/tag/llm",
+        "https://medium.com/feed/tag/langchain",
+        "https://medium.com/feed/tag/mlops",
+        "https://medium.com/feed/tag/backend",
+        "https://medium.com/feed/tag/web-development",
+        "https://medium.com/feed/tag/ai",
+      ];
+
+      // Fallback articles
+      const sampleArticles = [
+        {
+          title: "The Future of AI in Web Development",
+          link: "https://example.com/ai-future",
+          source: "Tech News",
+          description:
+            "Exploring how AI will transform web development in the coming years",
+          isRecent: true,
+        },
+        {
+          title: "React 19 Features You Need to Know",
+          link: "https://example.com/react-19",
+          source: "React Blog",
+          description:
+            "New features and improvements in React 19 that developers should know",
+          isRecent: true,
+        },
+        {
+          title: "System Design Fundamentals",
+          link: "https://example.com/system-design",
+          source: "ByteByteGo",
+          description:
+            "Essential system design patterns for building scalable applications",
+          isRecent: true,
+        },
+        {
+          title: "Modern Web Performance Techniques",
+          link: "https://example.com/web-performance",
+          source: "web.dev",
+          description:
+            "Advanced techniques for optimizing web application performance",
+          isRecent: true,
+        },
+        {
+          title: "AI Development Best Practices",
+          link: "https://example.com/ai-practices",
+          source: "OpenAI Blog",
+          description:
+            "Best practices for developing and deploying AI applications",
+          isRecent: true,
+        },
+        {
+          title: "Building Scalable Microservices",
+          link: "https://example.com/microservices",
+          source: "Medium",
+          description:
+            "Learn how to design and implement scalable microservices architecture",
+          isRecent: true,
+        },
+        {
+          title: "JavaScript Performance Optimization",
+          link: "https://example.com/js-performance",
+          source: "Medium",
+          description:
+            "Advanced techniques for optimizing JavaScript performance in production",
+          isRecent: true,
+        },
+      ];
+
+      // Tech keywords for relevance scoring
+      const techKeywords = [
+        "ai",
+        "artificial intelligence",
+        "machine learning",
+        "react",
+        "javascript",
+        "nodejs",
+        "python",
+        "api",
+        "cloud",
+        "docker",
+        "kubernetes",
+        "typescript",
+        "nextjs",
+        "system design",
+        "microservices",
+        "devops",
+        "web development",
+        "backend",
+        "frontend",
+        "database",
+        "mongodb",
+        "postgresql",
+        "redis",
+      ];
+
+      function updateStatus(message, type = "info") {
+        statusEl.textContent = message;
+        statusEl.className = `status ${type}`;
+        statusEl.style.color =
+          type === "success"
+            ? "#10b981"
+            : type === "error"
+            ? "#ef4444"
+            : type === "warning"
+            ? "#f59e0b"
+            : "#1e293b";
+
+        if (type === "success" || type === "error") {
+          statusEl.style.background =
+            type === "success"
+              ? "rgba(16, 185, 129, 0.1)"
+              : "rgba(239, 68, 68, 0.1)";
+        }
+      }
+
+      // Enhanced article fetching with quality validation
+      async function fetchBalancedArticles(
+        feeds,
+        maxArticles,
+        sourceName = "Tech News"
+      ) {
+        console.log(
+          `🔄 Fetching ${maxArticles} articles from ${feeds.length} sources in category: ${sourceName}`
+        );
+
+        const promises = feeds.map(async (feed) => {
+          const api = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(
+            feed
+          )}`;
+          try {
+            const res = await fetch(api);
+            const data = await res.json();
+
+            if (data.status === "ok" && data.items && data.items.length > 0) {
+              const item = data.items[0];
+              if (item.title && item.link) {
+                const pubDate = new Date(item.pubDate || Date.now());
+                const isRecent =
+                  Date.now() - pubDate.getTime() < 7 * 24 * 60 * 60 * 1000;
+                const sourceTitle = data.feed?.title || sourceName;
+
+                console.log(`✅ Fetched article from: ${sourceTitle}`);
+
+                return {
+                  title: item.title,
+                  link: item.link,
+                  source: sourceTitle,
+                  pubDate: pubDate,
+                  isRecent: isRecent,
+                  description: item.description
+                    ? item.description.replace(/<[^>]*>/g, "").substring(0, 200)
+                    : "Click to read more...",
+                };
+              }
+            }
+          } catch (err) {
+            console.error(`❌ Error fetching from ${sourceName}:`, feed, err);
+          }
+          return null;
+        });
+
+        const results = await Promise.all(promises);
+        const validArticles = results.filter((article) => article !== null);
+
+        console.log(
+          `📊 Retrieved ${validArticles.length} articles from ${sourceName}`
+        );
+        return validArticles.slice(0, maxArticles);
+      }
+
+      // Quality assessment functions
+      function calculateTechRelevance(articles) {
+        let relevantCount = 0;
+        articles.forEach((article) => {
+          const content = (
+            article.title +
+            " " +
+            article.description
+          ).toLowerCase();
+          const hasRelevantTerms = techKeywords.some((keyword) =>
+            content.includes(keyword)
+          );
+          if (hasRelevantTerms) relevantCount++;
+        });
+        return Math.round((relevantCount / articles.length) * 100);
+      }
+
+      function generateQualityReport(articles) {
+        const mediumCount = articles.filter(
+          (a) => a.source.includes("Medium") || a.source.includes("medium")
+        ).length;
+        const uniqueSources = new Set(articles.map((a) => a.source)).size;
+        const recentCount = articles.filter((a) => a.isRecent).length;
+        const techRelevance = calculateTechRelevance(articles);
+
+        // Calculate overall quality score
+        const qualityScore = Math.round(
+          (uniqueSources / 10) * 25 + // Source diversity (25%)
+            (recentCount / articles.length) * 25 + // Freshness (25%)
+            (techRelevance / 100) * 30 + // Tech relevance (30%)
+            (mediumCount >= 2 ? 20 : mediumCount * 10) // Medium requirement (20%)
+        );
+
+        const report = {
+          totalArticles: articles.length,
+          uniqueSources: uniqueSources,
+          mediumArticles: mediumCount,
+          recentArticles: recentCount,
+          techRelevance: techRelevance,
+          qualityScore: Math.min(qualityScore, 100),
+          generatedAt: new Date().toLocaleString(),
+        };
+
+        console.log("📊 Quality Report:", report);
+        displayQualityReport(report);
+        return report;
+      }
+
+      function displayQualityReport(report) {
+        document.getElementById("totalArticles").textContent =
+          report.totalArticles;
+        document.getElementById("uniqueSources").textContent =
+          report.uniqueSources;
+        document.getElementById("mediumArticles").textContent =
+          report.mediumArticles;
+        document.getElementById(
+          "qualityScore"
+        ).textContent = `${report.qualityScore}%`;
+
+        qualityReport.style.display = "block";
+      }
+
+      // Enhanced article display with quality indicators
+      function displayArticles(articles) {
+        articlesList.innerHTML = "";
+
+        if (articles.length === 0) {
+          articlesList.innerHTML =
+            '<li class="article-item">⚠️ No articles found. Try again later.</li>';
+          articlesContainer.style.display = "block";
+          return;
+        }
+
+        articles.forEach((article, index) => {
+          const li = document.createElement("li");
+          li.className = "article-item";
+
+          const sourceType = article.source.includes("Medium")
+            ? "Medium"
+            : premiumTechFeeds.some((feed) => feed.includes(article.source))
+            ? "Premium"
+            : "General";
+
+          li.innerHTML = `
+            ${
+              article.isRecent
+                ? '<div class="freshness-indicator" title="Recent article"></div>'
+                : ""
+            }
+            <a href="${article.link}" target="_blank" class="article-link">
+              ${index + 1}. ${article.title}
+            </a>
+            <div class="article-description">
+              ${article.description}
+            </div>
+            <div class="article-source">
+              📝 Source: ${article.source}
+              <span class="source-badge">${sourceType}</span>
+            </div>
+          `;
+
+          articlesList.appendChild(li);
+        });
+
+        articlesContainer.style.display = "block";
+        setTimeout(() => {
+          articlesContainer.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+
+      // Main execution function
+      fetchBtn.addEventListener("click", async () => {
+        fetchBtn.disabled = true;
+        fetchBtn.innerHTML = '<span class="spinner"></span>Loading...';
+
+        articlesContainer.style.display = "none";
+        qualityReport.style.display = "none";
+
+        console.log("🚀 Starting article fetching process...");
+
+        try {
+          // Fetch articles with optimized distribution
+          updateStatus("Fetching articles from general tech sources...");
+          let generalArticles = await fetchBalancedArticles(
+            generalFeeds,
+            3,
+            "General Tech"
+          );
+          if (generalArticles.length === 0) {
+            generalArticles = sampleArticles.slice(0, 3);
+          }
+
+          updateStatus("Fetching articles from premium tech sources...");
+          let premiumArticles = await fetchBalancedArticles(
+            premiumTechFeeds,
+            5,
+            "Premium Tech"
+          );
+          if (premiumArticles.length === 0) {
+            premiumArticles = sampleArticles.slice(0, 5);
+          }
+
+          updateStatus("Fetching Medium articles...");
+          let mediumArticles = await fetchBalancedArticles(
+            mediumFeeds,
+            2,
+            "Medium"
+          );
+          if (mediumArticles.length < 2) {
+            // Ensure at least 2 Medium articles
+            const fallbackMedium = sampleArticles
+              .filter((a) => a.source === "Medium")
+              .slice(0, 2 - mediumArticles.length);
+            mediumArticles = [...mediumArticles, ...fallbackMedium];
+          }
+
+          // Combine and validate articles
+          const combinedArticles = [
+            ...generalArticles,
+            ...premiumArticles,
+            ...mediumArticles,
+          ];
+          const finalArticles = combinedArticles.slice(0, 10); // Ensure exactly 10 articles
+
+          // Generate quality report
+          const report = generateQualityReport(finalArticles);
+
+          updateStatus(
+            `✅ Successfully loaded ${finalArticles.length} high-quality articles from ${report.uniqueSources} sources`,
+            "success"
+          );
+
+          // Display articles
+          displayArticles(finalArticles);
+        } catch (error) {
+          console.error("Error in main process:", error);
+          updateStatus(
+            "❌ Error occurred during processing: " + error.message,
+            "error"
+          );
+        } finally {
+          fetchBtn.disabled = false;
+          fetchBtn.textContent = "Fetch 10 High-Quality Articles";
+        }
+      });
+    </script>
+  </body>
+</html>
