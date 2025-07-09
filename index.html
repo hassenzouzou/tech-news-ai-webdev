@@ -247,7 +247,7 @@
         sources
       </p>
 
-      <button id="fetchBtn" class="btn">Fetch 10 High-Quality Articles</button>
+      <button id="fetchBtn" class="btn">Fetch Tech Articles</button>
       <div id="status" class="status"></div>
 
       <div id="qualityReport" class="quality-report" style="display: none">
@@ -322,66 +322,6 @@
         "https://medium.com/feed/tag/ai",
       ];
 
-      // Fallback articles
-      const sampleArticles = [
-        {
-          title: "The Future of AI in Web Development",
-          link: "https://example.com/ai-future",
-          source: "Tech News",
-          description:
-            "Exploring how AI will transform web development in the coming years",
-          isRecent: true,
-        },
-        {
-          title: "React 19 Features You Need to Know",
-          link: "https://example.com/react-19",
-          source: "React Blog",
-          description:
-            "New features and improvements in React 19 that developers should know",
-          isRecent: true,
-        },
-        {
-          title: "System Design Fundamentals",
-          link: "https://example.com/system-design",
-          source: "ByteByteGo",
-          description:
-            "Essential system design patterns for building scalable applications",
-          isRecent: true,
-        },
-        {
-          title: "Modern Web Performance Techniques",
-          link: "https://example.com/web-performance",
-          source: "web.dev",
-          description:
-            "Advanced techniques for optimizing web application performance",
-          isRecent: true,
-        },
-        {
-          title: "AI Development Best Practices",
-          link: "https://example.com/ai-practices",
-          source: "OpenAI Blog",
-          description:
-            "Best practices for developing and deploying AI applications",
-          isRecent: true,
-        },
-        {
-          title: "Building Scalable Microservices",
-          link: "https://example.com/microservices",
-          source: "Medium",
-          description:
-            "Learn how to design and implement scalable microservices architecture",
-          isRecent: true,
-        },
-        {
-          title: "JavaScript Performance Optimization",
-          link: "https://example.com/js-performance",
-          source: "Medium",
-          description:
-            "Advanced techniques for optimizing JavaScript performance in production",
-          isRecent: true,
-        },
-      ];
-
       // Tech keywords for relevance scoring
       const techKeywords = [
         "ai",
@@ -429,17 +369,22 @@
         }
       }
 
-      // Enhanced article fetching with quality validation
-      async function fetchBalancedArticles(
+      // Enhanced article fetching from real sources only
+      async function fetchRealArticles(
         feeds,
         maxArticles,
         sourceName = "Tech News"
       ) {
         console.log(
-          `🔄 Fetching ${maxArticles} articles from ${feeds.length} sources in category: ${sourceName}`
+          `🔄 Fetching up to ${maxArticles} articles from ${feeds.length} sources in category: ${sourceName}`
         );
 
-        const promises = feeds.map(async (feed) => {
+        const articles = [];
+        const articlesPerSource = Math.ceil(maxArticles / feeds.length);
+
+        for (const feed of feeds) {
+          if (articles.length >= maxArticles) break;
+
           const api = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(
             feed
           )}`;
@@ -448,44 +393,72 @@
             const data = await res.json();
 
             if (data.status === "ok" && data.items && data.items.length > 0) {
-              const item = data.items[0];
-              if (item.title && item.link) {
-                const pubDate = new Date(item.pubDate || Date.now());
-                const isRecent =
-                  Date.now() - pubDate.getTime() < 7 * 24 * 60 * 60 * 1000;
-                const sourceTitle = data.feed?.title || sourceName;
+              let sourceArticles = 0;
 
-                console.log(`✅ Fetched article from: ${sourceTitle}`);
+              for (const item of data.items) {
+                if (
+                  articles.length >= maxArticles ||
+                  sourceArticles >= articlesPerSource
+                )
+                  break;
 
-                return {
-                  title: item.title,
-                  link: item.link,
-                  source: sourceTitle,
-                  pubDate: pubDate,
-                  isRecent: isRecent,
-                  description: item.description
-                    ? item.description.replace(/<[^>]*>/g, "").substring(0, 200)
-                    : "Click to read more...",
-                };
+                if (item.title && item.link) {
+                  const pubDate = new Date(item.pubDate || Date.now());
+                  const isRecent =
+                    Date.now() - pubDate.getTime() < 7 * 24 * 60 * 60 * 1000;
+                  const sourceTitle = data.feed?.title || sourceName;
+
+                  articles.push({
+                    title: item.title,
+                    link: item.link,
+                    source: sourceTitle,
+                    pubDate: pubDate,
+                    isRecent: isRecent,
+                    originalCategory: sourceName,
+                    description: item.description
+                      ? item.description
+                          .replace(/<[^>]*>/g, "")
+                          .substring(0, 200)
+                      : "Click to read more...",
+                  });
+
+                  sourceArticles++;
+                }
+              }
+
+              if (sourceArticles > 0) {
+                console.log(
+                  `✅ Fetched ${sourceArticles} articles from: ${
+                    data.feed?.title || sourceName
+                  }`
+                );
               }
             }
           } catch (err) {
             console.error(`❌ Error fetching from ${sourceName}:`, feed, err);
           }
-          return null;
-        });
 
-        const results = await Promise.all(promises);
-        const validArticles = results.filter((article) => article !== null);
+          // Small delay between requests
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
 
         console.log(
-          `📊 Retrieved ${validArticles.length} articles from ${sourceName}`
+          `📊 Retrieved ${articles.length} real articles from ${sourceName}`
         );
-        return validArticles.slice(0, maxArticles);
+        return articles;
+      }
+
+      // Get source type based on original category
+      function getSourceType(article) {
+        if (article.originalCategory === "Medium") return "Medium";
+        if (article.originalCategory === "Premium Tech") return "Premium";
+        return "General";
       }
 
       // Quality assessment functions
       function calculateTechRelevance(articles) {
+        if (articles.length === 0) return 0;
+
         let relevantCount = 0;
         articles.forEach((article) => {
           const content = (
@@ -502,8 +475,20 @@
       }
 
       function generateQualityReport(articles) {
+        if (articles.length === 0) {
+          return {
+            totalArticles: 0,
+            uniqueSources: 0,
+            mediumArticles: 0,
+            recentArticles: 0,
+            techRelevance: 0,
+            qualityScore: 0,
+            generatedAt: new Date().toLocaleString(),
+          };
+        }
+
         const mediumCount = articles.filter(
-          (a) => a.source.includes("Medium") || a.source.includes("medium")
+          (a) => a.originalCategory === "Medium"
         ).length;
         const uniqueSources = new Set(articles.map((a) => a.source)).size;
         const recentCount = articles.filter((a) => a.isRecent).length;
@@ -511,10 +496,9 @@
 
         // Calculate overall quality score
         const qualityScore = Math.round(
-          (uniqueSources / 10) * 25 + // Source diversity (25%)
-            (recentCount / articles.length) * 25 + // Freshness (25%)
-            (techRelevance / 100) * 30 + // Tech relevance (30%)
-            (mediumCount >= 2 ? 20 : mediumCount * 10) // Medium requirement (20%)
+          (uniqueSources / Math.max(articles.length, 1)) * 30 + // Source diversity (30%)
+            (recentCount / articles.length) * 30 + // Freshness (30%)
+            (techRelevance / 100) * 40 // Tech relevance (40%)
         );
 
         const report = {
@@ -546,13 +530,13 @@
         qualityReport.style.display = "block";
       }
 
-      // Enhanced article display with quality indicators
+      // Enhanced article display
       function displayArticles(articles) {
         articlesList.innerHTML = "";
 
         if (articles.length === 0) {
           articlesList.innerHTML =
-            '<li class="article-item">⚠️ No articles found. Try again later.</li>';
+            '<li class="article-item">⚠️ No articles found from RSS feeds. Please try again later or check your internet connection.</li>';
           articlesContainer.style.display = "block";
           return;
         }
@@ -561,16 +545,12 @@
           const li = document.createElement("li");
           li.className = "article-item";
 
-          const sourceType = article.source.includes("Medium")
-            ? "Medium"
-            : premiumTechFeeds.some((feed) => feed.includes(article.source))
-            ? "Premium"
-            : "General";
+          const sourceType = getSourceType(article);
 
           li.innerHTML = `
             ${
               article.isRecent
-                ? '<div class="freshness-indicator" title="Recent article"></div>'
+                ? '<div class="freshness-indicator" title="Recent article (within 7 days)"></div>'
                 : ""
             }
             <a href="${article.link}" target="_blank" class="article-link">
@@ -594,7 +574,36 @@
         }, 100);
       }
 
-      // Main execution function
+      // Source distribution reporting
+      function generateSourceReport(
+        generalArticles,
+        premiumArticles,
+        mediumArticles
+      ) {
+        console.log("📊 Real Sources Distribution Report:");
+        console.log(`General Tech: ${generalArticles.length} articles`);
+        console.log(`Premium Tech: ${premiumArticles.length} articles`);
+        console.log(`Medium: ${mediumArticles.length} articles`);
+        console.log(
+          `Total: ${
+            generalArticles.length +
+            premiumArticles.length +
+            mediumArticles.length
+          } articles`
+        );
+
+        return {
+          general: generalArticles.length,
+          premium: premiumArticles.length,
+          medium: mediumArticles.length,
+          total:
+            generalArticles.length +
+            premiumArticles.length +
+            mediumArticles.length,
+        };
+      }
+
+      // Main execution function - only real articles
       fetchBtn.addEventListener("click", async () => {
         fetchBtn.disabled = true;
         fetchBtn.innerHTML = '<span class="spinner"></span>Loading...';
@@ -602,57 +611,70 @@
         articlesContainer.style.display = "none";
         qualityReport.style.display = "none";
 
-        console.log("🚀 Starting article fetching process...");
+        console.log("🚀 Starting real article fetching process...");
 
         try {
-          // Fetch articles with optimized distribution
+          // Fetch real articles from all sources
           updateStatus("Fetching articles from general tech sources...");
-          let generalArticles = await fetchBalancedArticles(
+          const generalArticles = await fetchRealArticles(
             generalFeeds,
-            3,
+            4,
             "General Tech"
           );
-          if (generalArticles.length === 0) {
-            generalArticles = sampleArticles.slice(0, 3);
-          }
 
           updateStatus("Fetching articles from premium tech sources...");
-          let premiumArticles = await fetchBalancedArticles(
+          const premiumArticles = await fetchRealArticles(
             premiumTechFeeds,
-            5,
+            8,
             "Premium Tech"
           );
-          if (premiumArticles.length === 0) {
-            premiumArticles = sampleArticles.slice(0, 5);
-          }
 
-          updateStatus("Fetching Medium articles...");
-          let mediumArticles = await fetchBalancedArticles(
+          updateStatus("Fetching articles from Medium...");
+          const mediumArticles = await fetchRealArticles(
             mediumFeeds,
-            2,
+            3,
             "Medium"
           );
-          if (mediumArticles.length < 2) {
-            // Ensure at least 2 Medium articles
-            const fallbackMedium = sampleArticles
-              .filter((a) => a.source === "Medium")
-              .slice(0, 2 - mediumArticles.length);
-            mediumArticles = [...mediumArticles, ...fallbackMedium];
-          }
 
-          // Combine and validate articles
+          // Generate detailed source report
+          const sourceReport = generateSourceReport(
+            generalArticles,
+            premiumArticles,
+            mediumArticles
+          );
+
+          // Combine all real articles
           const combinedArticles = [
             ...generalArticles,
             ...premiumArticles,
             ...mediumArticles,
           ];
-          const finalArticles = combinedArticles.slice(0, 10); // Ensure exactly 10 articles
+
+          // Shuffle articles for variety
+          const shuffledArticles = combinedArticles.sort(
+            () => Math.random() - 0.5
+          );
+
+          // Take up to 15 articles
+          const finalArticles = shuffledArticles.slice(0, 15);
+
+          console.log(
+            `🎯 FINAL RESULT: ${finalArticles.length} real articles fetched!`
+          );
+
+          if (finalArticles.length === 0) {
+            updateStatus(
+              "❌ No articles could be fetched from any source. Please check your internet connection and try again.",
+              "error"
+            );
+            return;
+          }
 
           // Generate quality report
           const report = generateQualityReport(finalArticles);
 
           updateStatus(
-            `✅ Successfully loaded ${finalArticles.length} high-quality articles from ${report.uniqueSources} sources`,
+            `✅ Successfully loaded ${finalArticles.length} real articles from ${report.uniqueSources} sources`,
             "success"
           );
 
@@ -666,7 +688,7 @@
           );
         } finally {
           fetchBtn.disabled = false;
-          fetchBtn.textContent = "Fetch 10 High-Quality Articles";
+          fetchBtn.textContent = "Fetch Tech Articles";
         }
       });
     </script>
